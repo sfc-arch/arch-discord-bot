@@ -1,4 +1,4 @@
-use crate::events;
+use crate::{commands::bento::bento_command, events};
 use serenity::{
     async_trait,
     client::{Context, EventHandler},
@@ -17,6 +17,7 @@ impl EventHandler for Handler {
         if let Interaction::ApplicationCommand(command) = interaction.clone() {
             let name = &*command.data.name;
             match name {
+                "bento" => bento_command(&ctx, &command).await.unwrap(),
                 _ => {}
             }
         }
