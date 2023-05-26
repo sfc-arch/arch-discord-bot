@@ -1,5 +1,6 @@
 mod commands;
 mod config;
+mod database;
 mod event_handler;
 mod events;
 mod implement;
