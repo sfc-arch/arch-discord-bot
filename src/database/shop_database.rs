@@ -36,12 +36,12 @@ impl ShopDatabase {
         self.set_shops(server_id, shops).await;
     }
 
-    pub async fn remove_shop(&mut self, server_id: u64, shop: Shop) {
+    pub async fn remove_shop(&mut self, server_id: u64, name: String) {
         let mut shops = self.get_shops(server_id).await;
         let mut i = None;
 
         for (index, f_shop) in shops.iter().enumerate() {
-            if shop == *f_shop {
+            if name == *f_shop.name {
                 i = Some(index);
                 break;
             }
