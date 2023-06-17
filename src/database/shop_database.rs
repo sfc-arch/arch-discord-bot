@@ -1,4 +1,14 @@
+use std::sync::Arc;
+
+use serenity::{futures::lock::Mutex, prelude::TypeMapKey};
+
 use super::database::Database;
+
+pub struct ShopDatabaseClientData;
+
+impl TypeMapKey for ShopDatabaseClientData {
+    type Value = Arc<Mutex<ShopDatabase>>;
+}
 
 pub struct ShopDatabase {
     database: Database,
