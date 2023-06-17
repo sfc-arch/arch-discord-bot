@@ -1,14 +1,18 @@
 mod commands;
 mod config;
+mod database;
 mod event_handler;
 mod events;
 mod implement;
 
-use std::env;
+use std::{env, sync::Arc};
 
 use config::Config;
+use database::shop_database::{ShopDatabase, ShopDatabaseClientData};
 use event_handler::Handler;
-use serenity::{client::Client, framework::StandardFramework, prelude::GatewayIntents};
+use serenity::{
+    client::Client, framework::StandardFramework, futures::lock::Mutex, prelude::GatewayIntents,
+};
 
 use songbird::SerenityInit;
 
@@ -42,10 +46,12 @@ async fn main() {
             let token = env::var("ARCH_TOKEN").unwrap();
             let application_id = env::var("ARCH_APP_ID").unwrap();
             let prefix = env::var("ARCH_PREFIX").unwrap();
+            let redis_url = env::var("ARCH_REDIS_URL").unwrap();
 
             Config {
                 token,
                 application_id: u64::from_str_radix(&application_id, 10).unwrap(),
+                redis_url,
                 prefix,
             }
         }
@@ -55,6 +61,17 @@ async fn main() {
     let mut client = create_client(&config.prefix, &config.token, config.application_id)
         .await
         .expect("Err creating client");
+
+    // Create database client
+    let shop_database_client = {
+        let redis_client = redis::Client::open(config.redis_url).unwrap();
+        ShopDatabase::new(redis_client)
+    };
+
+    {
+        let mut data = client.data.write().await;
+        data.insert::<ShopDatabaseClientData>(Arc::new(Mutex::new(shop_database_client)));
+    }
 
     // Run client
     if let Err(why) = client.start().await {
