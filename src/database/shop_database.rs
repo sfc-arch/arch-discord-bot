@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use serde::{Deserialize, Serialize};
 use serenity::{futures::lock::Mutex, prelude::TypeMapKey};
 
 use super::database::Database;
@@ -8,6 +9,12 @@ pub struct ShopDatabaseClientData;
 
 impl TypeMapKey for ShopDatabaseClientData {
     type Value = Arc<Mutex<ShopDatabase>>;
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct Shop {
+    pub name: String,
+    pub url: String,
 }
 
 pub struct ShopDatabase {
@@ -21,7 +28,7 @@ impl ShopDatabase {
         }
     }
 
-    pub async fn add_shop(&mut self, server_id: u64, shop: String) {
+    pub async fn add_shop(&mut self, server_id: u64, shop: Shop) {
         let mut shops = self.get_shops(server_id).await;
         if !shops.contains(&shop) {
             shops.push(shop);
@@ -29,7 +36,7 @@ impl ShopDatabase {
         self.set_shops(server_id, shops).await;
     }
 
-    pub async fn remove_shop(&mut self, server_id: u64, shop: String) {
+    pub async fn remove_shop(&mut self, server_id: u64, shop: Shop) {
         let mut shops = self.get_shops(server_id).await;
         let mut i = None;
 
@@ -47,11 +54,11 @@ impl ShopDatabase {
         self.set_shops(server_id, shops).await;
     }
 
-    pub async fn get_shops(&mut self, server_id: u64) -> Vec<String> {
+    pub async fn get_shops(&mut self, server_id: u64) -> Vec<Shop> {
         serde_json::from_str(&self.database.get(server_id.to_string()).await.unwrap()).unwrap()
     }
 
-    pub async fn set_shops(&mut self, server_id: u64, shops: Vec<String>) {
+    pub async fn set_shops(&mut self, server_id: u64, shops: Vec<Shop>) {
         self.database
             .set(
                 server_id.to_string(),
