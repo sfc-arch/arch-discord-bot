@@ -52,6 +52,11 @@ pub async fn ready(ctx: Context, ready: Ready) {
                                 .description("店一覧")
                         })
                 })
+                .create_option(|o| {
+                    o.kind(CommandOptionType::SubCommand)
+                        .name("start")
+                        .description("ARCH弁当を開始する")
+                })
         })
     })
     .await;

@@ -6,4 +6,5 @@ pub struct Config {
     pub token: String,
     pub redis_url: String,
     pub application_id: u64,
+    pub roulette_api_url: String,
 }

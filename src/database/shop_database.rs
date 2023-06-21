@@ -55,7 +55,14 @@ impl ShopDatabase {
     }
 
     pub async fn get_shops(&mut self, server_id: u64) -> Vec<Shop> {
-        serde_json::from_str(&self.database.get(server_id.to_string()).await.unwrap()).unwrap()
+        serde_json::from_str(
+            &self
+                .database
+                .get(server_id.to_string())
+                .await
+                .unwrap_or("{}".to_string()),
+        )
+        .unwrap_or(vec![])
     }
 
     pub async fn set_shops(&mut self, server_id: u64, shops: Vec<Shop>) {
