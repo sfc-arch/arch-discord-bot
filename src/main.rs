@@ -1,15 +1,19 @@
+mod bento;
 mod commands;
 mod config;
 mod database;
 mod event_handler;
 mod events;
 mod implement;
+mod roulette;
 
-use std::{env, sync::Arc};
+use std::{collections::HashMap, env, sync::Arc};
 
+use bento::BentoInstanceData;
 use config::Config;
 use database::shop_database::{ShopDatabase, ShopDatabaseClientData};
 use event_handler::Handler;
+use roulette::{RouletteClient, RouletteClientData};
 use serenity::{
     client::Client, framework::StandardFramework, futures::lock::Mutex, prelude::GatewayIntents,
 };
@@ -47,12 +51,14 @@ async fn main() {
             let application_id = env::var("ARCH_APP_ID").unwrap();
             let prefix = env::var("ARCH_PREFIX").unwrap();
             let redis_url = env::var("ARCH_REDIS_URL").unwrap();
+            let roulette_api_url = env::var("ARCH_ROULETTE_API_URL").unwrap();
 
             Config {
                 token,
                 application_id: u64::from_str_radix(&application_id, 10).unwrap(),
                 redis_url,
                 prefix,
+                roulette_api_url,
             }
         }
     };
@@ -71,6 +77,10 @@ async fn main() {
     {
         let mut data = client.data.write().await;
         data.insert::<ShopDatabaseClientData>(Arc::new(Mutex::new(shop_database_client)));
+        data.insert::<BentoInstanceData>(Arc::new(Mutex::new(HashMap::new())));
+        data.insert::<RouletteClientData>(Arc::new(RouletteClient {
+            base_url: config.roulette_api_url,
+        }));
     }
 
     // Run client

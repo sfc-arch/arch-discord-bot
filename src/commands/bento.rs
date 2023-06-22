@@ -1,23 +1,38 @@
+use std::collections::HashMap;
+
 use serenity::{
-    model::prelude::interaction::application_command::ApplicationCommandInteraction,
+    model::prelude::{
+        component::ButtonStyle, interaction::application_command::ApplicationCommandInteraction,
+    },
     prelude::Context,
 };
 
-use crate::database::shop_database::{Shop, ShopDatabaseClientData};
+use crate::{
+    bento::{BentoInstance, BentoInstanceData, BentoState},
+    database::shop_database::{Shop, ShopDatabaseClientData},
+};
 
 pub async fn bento_command(
     ctx: &Context,
     command: &ApplicationCommandInteraction,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let storage_lock = {
+    let shop_db = {
         let data_read = ctx.data.read().await;
         data_read
             .get::<ShopDatabaseClientData>()
             .expect("Cannot get ShopDatabaseClientData")
             .clone()
     };
+    let mut shop_db = shop_db.lock().await;
 
-    let mut shop_db = storage_lock.lock().await;
+    let bento_instances = {
+        let data_read = ctx.data.read().await;
+        data_read
+            .get::<BentoInstanceData>()
+            .expect("Cannot get BentoInstanceData")
+            .clone()
+    };
+    let mut bento_instances = bento_instances.lock().await;
 
     let sub_command = command.data.options[0].clone();
 
@@ -90,6 +105,39 @@ pub async fn bento_command(
                 }
                 _ => {}
             }
+        }
+
+        "start" => {
+            command
+                .create_interaction_response(&ctx.http, |f| {
+                    f.interaction_response_data(|d| {
+                        d.content("投票を開始しました。").ephemeral(true)
+                    })
+                })
+                .await?;
+
+            let author = command.user.clone();
+
+            let message = command
+                .channel_id
+                .send_message(&ctx.http, |f| f.content("ARCH弁当"))
+                .await?;
+
+            let shops = shop_db.get_shops(command.guild_id.unwrap().0).await;
+
+            let mut bento_instance = BentoInstance {
+                start_user: command.user.clone(),
+                message: message.clone(),
+                vote: HashMap::new(),
+                roulette_id: None,
+                roulette_secret: None,
+                state: BentoState::VOTE,
+                shops,
+            };
+
+            bento_instance.edit_message(&ctx.http).await;
+
+            bento_instances.insert(message.id.0, bento_instance);
         }
 
         _ => {}
