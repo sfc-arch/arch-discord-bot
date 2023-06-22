@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use std::sync::Arc;
+use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
 use serenity::builder::{CreateMessage, EditMessage};
@@ -171,7 +172,7 @@ impl BentoInstance {
                     };
                     let roulette_client = roulette_client;
 
-                    roulette_client
+                    let result = roulette_client
                         .start_roulette(
                             self.roulette_id.clone().unwrap(),
                             self.roulette_secret.clone().unwrap(),
@@ -179,6 +180,35 @@ impl BentoInstance {
                         .await;
 
                     self.edit_message(&ctx.http).await;
+
+                    let message = self.message.clone();
+                    let url = self
+                        .shops
+                        .iter()
+                        .filter(|f| f.name == result)
+                        .collect::<Vec<&Shop>>()[0]
+                        .url
+                        .clone();
+                    let channel = self.message.channel(&ctx.http).await.unwrap();
+
+                    tokio::spawn(async move {
+                        tokio::time::sleep(Duration::from_secs(10)).await;
+
+                        let message = message
+                            .channel_id
+                            .send_message(&ctx.http, |f| {
+                                f.content(format!("## 結果\n# {}\n{}", result, url))
+                            })
+                            .await
+                            .unwrap();
+
+                        let _ = channel
+                            .id()
+                            .create_public_thread(&ctx.http, message.id, |f| {
+                                f.name("ARCH弁当").auto_archive_duration(60)
+                            })
+                            .await;
+                    });
                 } else {
                     interaction
                         .create_interaction_response(&ctx.http, |f| {
@@ -229,24 +259,26 @@ impl BentoInstance {
                 .components(|c| {
                     match self.state {
                         BentoState::VOTE => {
-                            c.create_action_row(|a| {
-                                let mut a = a;
-                                for shop in self.shops.clone() {
-                                    let event = BentoEvent {
-                                        id,
-                                        action: BentoEventAction::VOTE_SHOP,
-                                        arg: shop.name.clone(),
-                                    };
-                                    a = a.create_button(|cb| {
-                                        cb.style(ButtonStyle::Primary)
-                                            .label(shop.name.clone())
-                                            .custom_id(serde_json::to_string(&event).unwrap())
-                                    });
-                                }
+                            self.shops.clone().chunks(5).for_each(|shops| {
+                                c.create_action_row(|a| {
+                                    let mut a = a;
+                                    for shop in shops {
+                                        let event = BentoEvent {
+                                            id,
+                                            action: BentoEventAction::VOTE_SHOP,
+                                            arg: shop.name.clone(),
+                                        };
+                                        a = a.create_button(|cb| {
+                                            cb.style(ButtonStyle::Primary)
+                                                .label(shop.name.clone())
+                                                .custom_id(serde_json::to_string(&event).unwrap())
+                                        });
+                                    }
 
-                                a
-                            })
-                            .create_action_row(|a| {
+                                    a
+                                });
+                            });
+                            c.create_action_row(|a| {
                                 a.create_button(|b| {
                                     let event = BentoEvent {
                                         id,

@@ -31,7 +31,7 @@ impl RouletteClient {
         }
     }
 
-    pub async fn start_roulette(&self, id: String, secret: String) {
+    pub async fn start_roulette(&self, id: String, secret: String) -> String {
         let client = reqwest::Client::new();
 
         let request = RouletteStartRequest { secret };
@@ -43,7 +43,7 @@ impl RouletteClient {
             .send()
             .await
         {
-            Ok(_) => {}
+            Ok(ok) => ok.text().await.unwrap(),
             Err(_) => {
                 panic!("Error")
             }
